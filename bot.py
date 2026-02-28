@@ -207,9 +207,12 @@ async def unban_user(message: types.Message):
 # ================= START =================
 
 async def main():
+    await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    import asyncio
+    asyncio.get_event_loop().run_until_complete(main())
+
 
 
