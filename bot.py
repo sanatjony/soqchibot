@@ -87,55 +87,6 @@ async def left_member(message: types.Message):
         await message.delete()
     except:
         pass
-# ================= ANTI LINK =================
-
-@dp.message()
-async def anti_link(message: types.Message):
-
-    if not message.text:
-        return
-
-    if await is_admin(message.chat.id, message.from_user.id):
-        return
-
-    if not is_link(message.text):
-        return
-
-    user_id = message.from_user.id
-    chat_id = message.chat.id
-    username = message.from_user.mention_html()
-
-    # message delete safe
-    try:
-        await message.delete()
-    except:
-        pass
-
-    strikes = user_strikes.get(user_id, 0) + 1
-    user_strikes[user_id] = strikes
-
-    if strikes == 1:
-        msg = await message.answer(
-            "⚠️ Guruhga ssilka tashlash mumkin emas.\nYana tashlasangiz ban beriladi.",
-            parse_mode="HTML"
-        )
-        asyncio.create_task(auto_delete(msg))
-
-    elif strikes == 2:
-        msg = await message.answer(
-            "❗ Oxirgi ogohlantirish!\nKeyingi ssilka → BAN",
-            parse_mode="HTML"
-        )
-        asyncio.create_task(auto_delete(msg))
-
-    elif strikes >= 3:
-        await bot.ban_chat_member(chat_id, user_id)
-        msg = await message.answer(
-            f"🚫 {username} guruh qoidalarini buzdi va ban qilindi.",
-            parse_mode="HTML"
-        )
-        asyncio.create_task(auto_delete(msg))
-        user_strikes[user_id] = 0
 
 # ================= MUTE =================
 
@@ -235,6 +186,55 @@ async def unban_user(message: types.Message):
 
     user_strikes[user_id] = 0
     asyncio.create_task(auto_delete(message))
+# ================= ANTI LINK =================
+
+@dp.message()
+async def anti_link(message: types.Message):
+
+    if not message.text:
+        return
+
+    if await is_admin(message.chat.id, message.from_user.id):
+        return
+
+    if not is_link(message.text):
+        return
+
+    user_id = message.from_user.id
+    chat_id = message.chat.id
+    username = message.from_user.mention_html()
+
+    # message delete safe
+    try:
+        await message.delete()
+    except:
+        pass
+
+    strikes = user_strikes.get(user_id, 0) + 1
+    user_strikes[user_id] = strikes
+
+    if strikes == 1:
+        msg = await message.answer(
+            "⚠️ Guruhga ssilka tashlash mumkin emas.\nYana tashlasangiz ban beriladi.",
+            parse_mode="HTML"
+        )
+        asyncio.create_task(auto_delete(msg))
+
+    elif strikes == 2:
+        msg = await message.answer(
+            "❗ Oxirgi ogohlantirish!\nKeyingi ssilka → BAN",
+            parse_mode="HTML"
+        )
+        asyncio.create_task(auto_delete(msg))
+
+    elif strikes >= 3:
+        await bot.ban_chat_member(chat_id, user_id)
+        msg = await message.answer(
+            f"🚫 {username} guruh qoidalarini buzdi va ban qilindi.",
+            parse_mode="HTML"
+        )
+        asyncio.create_task(auto_delete(msg))
+        user_strikes[user_id] = 0
 
 # ================= START =================
 
@@ -249,6 +249,7 @@ async def main():
 if __name__ == "__main__":
     import asyncio
     asyncio.run(main())
+
 
 
 
