@@ -57,15 +57,21 @@ def is_link(text):
 @dp.message(lambda m: m.new_chat_members)
 async def new_member(message: types.Message):
 
-    await message.delete()
+    try:
+        await message.delete()
+    except:
+        pass
 
     for user in message.new_chat_members:
-        await bot.restrict_chat_member(
-            message.chat.id,
-            user.id,
-            ChatPermissions(can_send_messages=False),
-            until_date=datetime.now() + timedelta(minutes=1)
-        )
+        try:
+            await bot.restrict_chat_member(
+                message.chat.id,
+                user.id,
+                ChatPermissions(can_send_messages=False),
+                until_date=datetime.now() + timedelta(minutes=1)
+            )
+        except:
+            pass
 
         msg = await message.answer(
             f"👋 {user.mention_html()} guruhga xush kelibsiz!\n1 daqiqa yozish cheklovi qo‘llandi.",
@@ -75,11 +81,12 @@ async def new_member(message: types.Message):
         asyncio.create_task(auto_delete(msg))
 
 # ================= USER LEFT =================
-
 @dp.message(lambda m: m.left_chat_member)
 async def left_member(message: types.Message):
-    await message.delete()
-
+    try:
+        await message.delete()
+    except:
+        pass
 # ================= ANTI LINK =================
 
 @dp.message()
@@ -228,6 +235,7 @@ async def main():
 if __name__ == "__main__":
     import asyncio
     asyncio.run(main())
+
 
 
 
