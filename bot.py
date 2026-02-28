@@ -13,6 +13,17 @@ dp = Dispatcher()
 
 user_strikes = {}
 
+from aiogram.filters import CommandStart
+
+@dp.message(CommandStart())
+async def start_cmd(message: types.Message):
+    await message.answer(
+        "Salom 👋\n\n"
+        "Men guruhni himoya qiluvchi botman.\n"
+        "Guruhga ssilka tashlash taqiqlangan 🚫\n\n"
+        "Qoidani buzganlar ogohlantiriladi va ban qilinadi."
+    )
+
 LINK_PATTERN = re.compile(
     r"(https?:\/\/|t\.me\/|telegram\.me\/|@\w+)",
     re.IGNORECASE
@@ -217,6 +228,7 @@ async def main():
 if __name__ == "__main__":
     import asyncio
     asyncio.run(main())
+
 
 
 
