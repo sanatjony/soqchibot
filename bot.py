@@ -1,4 +1,3 @@
-```python
 import re
 import asyncio
 from aiogram import Bot, Dispatcher, types
@@ -213,3 +212,4 @@ async def main():
 if __name__ == "__main__":
     asyncio.run(main())
 ```
+
