@@ -105,7 +105,10 @@ async def anti_link(message: types.Message):
     chat_id = message.chat.id
     username = message.from_user.mention_html()
 
+    try:
     await message.delete()
+except:
+    pass
 
     strikes = user_strikes.get(user_id, 0) + 1
     user_strikes[user_id] = strikes
@@ -228,13 +231,14 @@ async def main():
     await bot.delete_webhook(drop_pending_updates=True)
 
     # eski container o‘lishini kutamiz
-    await asyncio.sleep(5)
+    await asyncio.sleep(15)
 
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
     import asyncio
     asyncio.run(main())
+
 
 
 
