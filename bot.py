@@ -104,10 +104,12 @@ async def anti_link(message: types.Message):
     chat_id = message.chat.id
     username = message.from_user.mention_html()
 
+    # message delete safe
     try:
-    await message.delete()
-except:
-    pass
+        await message.delete()
+    except:
+        pass
+
     strikes = user_strikes.get(user_id, 0) + 1
     user_strikes[user_id] = strikes
 
@@ -236,6 +238,7 @@ async def main():
 if __name__ == "__main__":
     import asyncio
     asyncio.run(main())
+
 
 
 
