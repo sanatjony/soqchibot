@@ -90,14 +90,8 @@ async def left_member(message: types.Message):
 
 # ================= MUTE =================
 
-@dp.message()
+@dp.message(lambda m: m.text and m.text.startswith(".mute"))
 async def mute_user(message: types.Message):
-
-    if not message.text:
-        return
-
-    if not message.text.startswith(".mute"):
-        return
 
     if not message.reply_to_message:
         return
@@ -106,7 +100,6 @@ async def mute_user(message: types.Message):
         return
 
     args = message.text.split()
-
     if len(args) < 2:
         return
 
@@ -249,6 +242,7 @@ async def main():
 if __name__ == "__main__":
     import asyncio
     asyncio.run(main())
+
 
 
 
