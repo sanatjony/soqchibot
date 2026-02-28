@@ -1,4 +1,3 @@
-import re
 import asyncio
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import ChatPermissions
@@ -106,7 +105,7 @@ async def anti_link(message: types.Message):
     username = message.from_user.mention_html()
 
     try:
-    await message.delete()
+        await message.delete()
 except:
     pass
 
@@ -238,6 +237,7 @@ async def main():
 if __name__ == "__main__":
     import asyncio
     asyncio.run(main())
+
 
 
 
