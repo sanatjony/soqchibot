@@ -17,7 +17,7 @@ from aiogram.filters import CommandStart
 
 @dp.message(CommandStart())
 async def start_cmd(message: types.Message):
-    await message.answer(
+    await message.reply(
         "Salom 👋\n\n"
         "Men guruhni himoya qiluvchi botman.\n"
         "Guruhga ssilka tashlash taqiqlangan 🚫\n\n"
@@ -228,6 +228,7 @@ async def main():
 if __name__ == "__main__":
     import asyncio
     asyncio.run(main())
+
 
 
 
