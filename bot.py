@@ -207,16 +207,17 @@ async def unban_user(message: types.Message):
 # ================= START =================
 
 async def main():
-    try:
-        await bot.delete_webhook(drop_pending_updates=True)
-    except:
-        pass
+    await bot.delete_webhook(drop_pending_updates=True)
 
-    await dp.start_polling(bot, skip_updates=True)
+    # eski container o‘lishini kutamiz
+    await asyncio.sleep(5)
+
+    await dp.start_polling(bot)
 
 if __name__ == "__main__":
     import asyncio
     asyncio.run(main())
+
 
 
 
