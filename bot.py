@@ -105,10 +105,9 @@ async def anti_link(message: types.Message):
     username = message.from_user.mention_html()
 
     try:
-        await message.delete()
+    await message.delete()
 except:
     pass
-
     strikes = user_strikes.get(user_id, 0) + 1
     user_strikes[user_id] = strikes
 
@@ -237,6 +236,7 @@ async def main():
 if __name__ == "__main__":
     import asyncio
     asyncio.run(main())
+
 
 
 
