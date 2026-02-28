@@ -114,25 +114,25 @@ async def mute_user(message: types.Message):
     user_id = message.reply_to_message.from_user.id
 
     try:
-    await bot.restrict_chat_member(
-        message.chat.id,
-        user_id,
-        ChatPermissions(
-            can_send_messages=False,
-            can_send_audios=False,
-            can_send_documents=False,
-            can_send_photos=False,
-            can_send_videos=False,
-            can_send_video_notes=False,
-            can_send_voice_notes=False,
-            can_send_polls=False,
-            can_send_other_messages=False,
-            can_add_web_page_previews=False
-        ),
-        until_date=until_date
-    )
-except:
-    return
+        await bot.restrict_chat_member(
+            message.chat.id,
+            user_id,
+            ChatPermissions(
+                can_send_messages=False,
+                can_send_audios=False,
+                can_send_documents=False,
+                can_send_photos=False,
+                can_send_videos=False,
+                can_send_video_notes=False,
+                can_send_voice_notes=False,
+                can_send_polls=False,
+                can_send_other_messages=False,
+                can_add_web_page_previews=False
+           ),
+           until_date=until_date
+       )
+    except:
+       return
 
     asyncio.create_task(auto_delete(message))
 
@@ -253,6 +253,7 @@ async def main():
 if __name__ == "__main__":
     import asyncio
     asyncio.run(main())
+
 
 
 
