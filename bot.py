@@ -139,8 +139,14 @@ async def anti_link(message: types.Message):
 
 # ================= MUTE =================
 
-@dp.message(lambda m: m.text and m.text.startswith(".mute"))
+@dp.message()
 async def mute_user(message: types.Message):
+
+    if not message.text:
+        return
+
+    if not message.text.startswith(".mute"):
+        return
 
     if not message.reply_to_message:
         return
@@ -149,6 +155,7 @@ async def mute_user(message: types.Message):
         return
 
     args = message.text.split()
+
     if len(args) < 2:
         return
 
@@ -162,12 +169,15 @@ async def mute_user(message: types.Message):
     until_date = datetime.now() + timedelta(seconds=seconds)
     user_id = message.reply_to_message.from_user.id
 
-    await bot.restrict_chat_member(
-        message.chat.id,
-        user_id,
-        ChatPermissions(can_send_messages=False),
-        until_date=until_date
-    )
+    try:
+        await bot.restrict_chat_member(
+            message.chat.id,
+            user_id,
+            ChatPermissions(can_send_messages=False),
+            until_date=until_date
+        )
+    except:
+        return
 
     asyncio.create_task(auto_delete(message))
 
@@ -239,6 +249,7 @@ async def main():
 if __name__ == "__main__":
     import asyncio
     asyncio.run(main())
+
 
 
 
