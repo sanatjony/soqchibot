@@ -50,6 +50,17 @@ async def is_admin(chat_id, user_id):
         ChatMemberStatus.CREATOR
     ]
 
+# ================= TIME PARSER =================
+
+def parse_time(time_str):
+    multiplier = {"m": 60, "h": 3600, "d": 86400}
+    try:
+        unit = time_str[-1]
+        value = int(time_str[:-1])
+        return value * multiplier.get(unit, 600)
+    except:
+        return 600
+
 # ================= HARD MUTE =================
 
 @dp.message(lambda m: m.text and m.text.startswith(".mute"))
@@ -62,18 +73,22 @@ async def mute_user(message: types.Message):
         return
 
     args = message.text.split()
-    if len(args) < 2:
-        return
 
-    time_str = args[1]
+    # default values
+    mute_time = "10m"
+    reason = "Sabab ko‘rsatilmagan"
 
-    multiplier = {"m": 60, "h": 3600, "d": 86400}
-    unit = time_str[-1]
-    value = int(time_str[:-1])
-    seconds = value * multiplier.get(unit, 0)
+    if len(args) >= 2:
+        mute_time = args[1]
 
+    if len(args) >= 3:
+        reason = " ".join(args[2:])
+
+    seconds = parse_time(mute_time)
     until_date = int(time.time()) + seconds
-    user_id = message.reply_to_message.from_user.id
+
+    user = message.reply_to_message.from_user
+    user_id = user.id
     chat_id = message.chat.id
 
     try:
@@ -96,8 +111,8 @@ async def mute_user(message: types.Message):
         )
 
         await message.reply(
-            f"🔇 {message.reply_to_message.from_user.mention_html()} {time_str} ga mute qilindi",
-            parse_mode="HTML"
+            f"🔇 {user.first_name} {mute_time} ga mute qilindi\n"
+            f"📌 Sabab: {reason}"
         )
 
     except Exception as e:
@@ -114,26 +129,25 @@ async def unmute_user(message: types.Message):
     if not await is_admin(message.chat.id, message.from_user.id):
         return
 
-    user_id = message.reply_to_message.from_user.id
-    chat_id = message.chat.id
+    user = message.reply_to_message.from_user
 
     try:
         await app.invoke(
             EditBanned(
-                channel=await app.resolve_peer(chat_id),
-                participant=await app.resolve_peer(user_id),
+                channel=await app.resolve_peer(message.chat.id),
+                participant=await app.resolve_peer(user.id),
                 banned_rights=ChatBannedRights()
             )
         )
 
-        await message.reply("🔊 UNMUTE qilindi")
+        await message.reply(f"🔊 {user.first_name} unmute qilindi")
 
     except Exception as e:
         print("Unmute error:", e)
 
 # ================= BAN =================
 
-@dp.message(lambda m: m.text == ".ban")
+@dp.message(lambda m: m.text and m.text.startswith(".ban"))
 async def ban_user(message: types.Message):
 
     if not message.reply_to_message:
@@ -142,22 +156,50 @@ async def ban_user(message: types.Message):
     if not await is_admin(message.chat.id, message.from_user.id):
         return
 
-    user_id = message.reply_to_message.from_user.id
-    chat_id = message.chat.id
+    args = message.text.split()
+    reason = "Sabab ko‘rsatilmagan"
+
+    if len(args) >= 2:
+        reason = " ".join(args[1:])
+
+    user = message.reply_to_message.from_user
 
     try:
         await app.invoke(
             EditBanned(
-                channel=await app.resolve_peer(chat_id),
-                participant=await app.resolve_peer(user_id),
+                channel=await app.resolve_peer(message.chat.id),
+                participant=await app.resolve_peer(user.id),
                 banned_rights=ChatBannedRights(view_messages=True)
             )
         )
 
-        await message.reply("🚫 BAN berildi")
+        await message.reply(
+            f"🚫 {user.first_name} ban qilindi\n"
+            f"📌 Sabab: {reason}"
+        )
 
     except Exception as e:
         print("Ban error:", e)
+
+# ================= UNBAN =================
+
+@dp.message(lambda m: m.text == ".unban")
+async def unban_user(message: types.Message):
+
+    if not message.reply_to_message:
+        return
+
+    if not await is_admin(message.chat.id, message.from_user.id):
+        return
+
+    user = message.reply_to_message.from_user
+
+    try:
+        await app.unban_chat_member(message.chat.id, user.id)
+        await message.reply(f"✅ {user.first_name} unban qilindi")
+
+    except Exception as e:
+        print("Unban error:", e)
 
 # ================= START SYSTEM =================
 
@@ -169,4 +211,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
