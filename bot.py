@@ -86,6 +86,8 @@ async def mute_user(message: types.Message):
     chat_id = message.chat.id
 
     try:
+        await app.get_chat(chat_id)
+        await app.get_chat_member(chat_id, user_id)
         await app.invoke(
             EditBanned(
                 channel=await app.resolve_peer(chat_id),
@@ -213,11 +215,14 @@ async def unban_user(message: types.Message):
 async def main():
     await bot.delete_webhook(drop_pending_updates=True)
     await app.start()
+    
+    # 🔥 Pyrogramga barcha chatlarni tanitadi
+    async for _ in app.get_dialogs():
+        pass
+
     print("Hybrid bot ishga tushdi")
     await dp.start_polling(bot)
 
-if __name__ == "__main__":
-    asyncio.run(main())
 
 
 
