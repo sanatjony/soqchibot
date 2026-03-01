@@ -134,4 +134,7 @@ async def main():
     print("Hybrid bot ishga tushdi")
 
     await dp.start_polling(bot, allowed_updates=[])
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(main())
 
