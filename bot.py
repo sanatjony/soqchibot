@@ -95,7 +95,10 @@ async def mute_user(message: types.Message):
             )
         )
 
-        await message.reply(f"🔇 {message.reply_to_message.from_user.mention} {time_str} ga mute qilindi")
+        await message.reply(
+            f"🔇 {message.reply_to_message.from_user.mention_html()} {time_str} ga mute qilindi",
+            parse_mode="HTML"
+        )
 
     except Exception as e:
         print("Mute error:", e)
@@ -166,3 +169,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
