@@ -114,11 +114,15 @@ async def mute_user(message: types.Message):
                 can_send_other_messages=False,
                 can_add_web_page_previews=False
             ),
+            use_independent_chat_permissions=True,
             until_date=until_date
         )
+
+        msg = await message.answer("🔇 Foydalanuvchi vaqtincha mute qilindi.")
+        asyncio.create_task(auto_delete(msg))
+
     except Exception as e:
         print("Mute error:", e)
-        return
 
     asyncio.create_task(auto_delete(message))
 
@@ -135,11 +139,30 @@ async def unmute_user(message: types.Message):
 
     user_id = message.reply_to_message.from_user.id
 
-    await bot.restrict_chat_member(
-        message.chat.id,
-        user_id,
-        ChatPermissions(can_send_messages=True)
-    )
+    try:
+        await bot.restrict_chat_member(
+            chat_id=message.chat.id,
+            user_id=user_id,
+            permissions=ChatPermissions(
+                can_send_messages=True,
+                can_send_audios=True,
+                can_send_documents=True,
+                can_send_photos=True,
+                can_send_videos=True,
+                can_send_video_notes=True,
+                can_send_voice_notes=True,
+                can_send_polls=True,
+                can_send_other_messages=True,
+                can_add_web_page_previews=True
+            ),
+            use_independent_chat_permissions=True
+        )
+
+        msg = await message.answer("🔊 Foydalanuvchi unmute qilindi.")
+        asyncio.create_task(auto_delete(msg))
+
+    except Exception as e:
+        print("Unmute error:", e)
 
     asyncio.create_task(auto_delete(message))
 
@@ -198,3 +221,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
