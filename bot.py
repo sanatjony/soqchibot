@@ -29,16 +29,12 @@ LINK_PATTERN = re.compile(
     re.IGNORECASE
 )
 
-# ================= AUTO DELETE =================
-
 async def auto_delete(message, delay=600):
     await asyncio.sleep(delay)
     try:
         await message.delete()
     except:
         pass
-
-# ================= ADMIN CHECK =================
 
 async def is_admin(chat_id, user_id):
     member = await bot.get_chat_member(chat_id, user_id)
@@ -47,12 +43,10 @@ async def is_admin(chat_id, user_id):
         ChatMemberStatus.CREATOR
     ]
 
-# ================= LINK CHECK =================
-
 def is_link(text):
     return bool(LINK_PATTERN.search(text))
 
-# ================= NEW USER JOIN =================
+# ================= NEW USER =================
 
 @dp.message(lambda m: m.new_chat_members)
 async def new_member(message: types.Message):
@@ -77,16 +71,7 @@ async def new_member(message: types.Message):
             f"👋 {user.mention_html()} guruhga xush kelibsiz!\n1 daqiqa yozish cheklovi qo‘llandi.",
             parse_mode="HTML"
         )
-
         asyncio.create_task(auto_delete(msg))
-
-# ================= USER LEFT =================
-@dp.message(lambda m: m.left_chat_member)
-async def left_member(message: types.Message):
-    try:
-        await message.delete()
-    except:
-        pass
 
 # ================= MUTE =================
 
@@ -127,12 +112,8 @@ async def mute_user(message: types.Message):
                 can_send_voice_notes=False,
                 can_send_polls=False,
                 can_send_other_messages=False,
-                can_add_web_page_previews=False,
-                can_change_info=False,
-                can_invite_users=False,
-                can_pin_messages=False
+                can_add_web_page_previews=False
             ),
-            use_independent_chat_permissions=True,
             until_date=until_date
         )
     except Exception as e:
@@ -160,48 +141,12 @@ async def unmute_user(message: types.Message):
         ChatPermissions(can_send_messages=True)
     )
 
-    user_strikes[user_id] = 0
     asyncio.create_task(auto_delete(message))
 
-# ================= BAN =================
-
-@dp.message(lambda m: m.text == ".ban")
-async def ban_user(message: types.Message):
-
-    if not message.reply_to_message:
-        return
-
-    if not await is_admin(message.chat.id, message.from_user.id):
-        return
-
-    user_id = message.reply_to_message.from_user.id
-    await bot.ban_chat_member(message.chat.id, user_id)
-
-    asyncio.create_task(auto_delete(message))
-
-# ================= UNBAN =================
-
-@dp.message(lambda m: m.text == ".unban")
-async def unban_user(message: types.Message):
-
-    if not message.reply_to_message:
-        return
-
-    if not await is_admin(message.chat.id, message.from_user.id):
-        return
-
-    user_id = message.reply_to_message.from_user.id
-    await bot.unban_chat_member(message.chat.id, user_id)
-
-    user_strikes[user_id] = 0
-    asyncio.create_task(auto_delete(message))
 # ================= ANTI LINK =================
 
-@dp.message()
+@dp.message(lambda m: m.text and not m.text.startswith("."))
 async def anti_link(message: types.Message):
-
-    if not message.text:
-        return
 
     if await is_admin(message.chat.id, message.from_user.id):
         return
@@ -213,7 +158,6 @@ async def anti_link(message: types.Message):
     chat_id = message.chat.id
     username = message.from_user.mention_html()
 
-    # message delete safe
     try:
         await message.delete()
     except:
@@ -224,14 +168,14 @@ async def anti_link(message: types.Message):
 
     if strikes == 1:
         msg = await message.answer(
-            "⚠️ Guruhga ssilka tashlash mumkin emas.\nYana tashlasangiz ban beriladi.",
+            "⚠️ Guruhga ssilka tashlash mumkin emas.",
             parse_mode="HTML"
         )
         asyncio.create_task(auto_delete(msg))
 
     elif strikes == 2:
         msg = await message.answer(
-            "❗ Oxirgi ogohlantirish!\nKeyingi ssilka → BAN",
+            "❗ Oxirgi ogohlantirish!",
             parse_mode="HTML"
         )
         asyncio.create_task(auto_delete(msg))
@@ -239,7 +183,7 @@ async def anti_link(message: types.Message):
     elif strikes >= 3:
         await bot.ban_chat_member(chat_id, user_id)
         msg = await message.answer(
-            f"🚫 {username} guruh qoidalarini buzdi va ban qilindi.",
+            f"🚫 {username} ban qilindi.",
             parse_mode="HTML"
         )
         asyncio.create_task(auto_delete(msg))
@@ -249,31 +193,8 @@ async def anti_link(message: types.Message):
 
 async def main():
     await bot.delete_webhook(drop_pending_updates=True)
-
-    # eski container o‘lishini kutamiz
-    await asyncio.sleep(15)
-
+    await asyncio.sleep(5)
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    import asyncio
     asyncio.run(main())
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
