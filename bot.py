@@ -99,6 +99,7 @@ async def mute_user(message: types.Message):
     user_id = message.reply_to_message.from_user.id
 
     try:
+        # TO'LIQ BLOK
         await bot.restrict_chat_member(
             chat_id=message.chat.id,
             user_id=user_id,
@@ -112,20 +113,22 @@ async def mute_user(message: types.Message):
                 can_send_voice_notes=False,
                 can_send_polls=False,
                 can_send_other_messages=False,
-                can_add_web_page_previews=False
+                can_add_web_page_previews=False,
+                can_invite_users=False,
+                can_pin_messages=False,
+                can_change_info=False
             ),
             use_independent_chat_permissions=True,
             until_date=until_date
         )
 
-        msg = await message.answer("🔇 Foydalanuvchi vaqtincha mute qilindi.")
+        msg = await message.answer("🔇 User mute qilindi")
         asyncio.create_task(auto_delete(msg))
 
     except Exception as e:
         print("Mute error:", e)
 
     asyncio.create_task(auto_delete(message))
-
 # ================= UNMUTE =================
 
 @dp.message(lambda m: m.text == ".unmute")
@@ -221,4 +224,5 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
