@@ -102,7 +102,8 @@ async def mute_user(message: types.Message):
                     embed_links=True,
                     change_info=True,
                     invite_users=True,
-                    pin_messages=True
+                    pin_messages=True,
+                    view_messages=False
                 )
             )
         )
@@ -217,5 +218,6 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
 
