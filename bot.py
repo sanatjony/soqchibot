@@ -212,6 +212,8 @@ async def unban_user(message: types.Message):
 
 # ================= MAIN =================
 
+# ================= MAIN =================
+
 async def main():
     await bot.delete_webhook(drop_pending_updates=True)
     await app.start()
@@ -222,6 +224,7 @@ async def main():
 
     print("Hybrid bot ishga tushdi")
     await dp.start_polling(bot)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
