@@ -25,43 +25,24 @@ app = Client(
     session_string=SESSION
 )
 
-# ================= AUTO DELETE =================
+# ================= ADMIN CHECK (ANONIM HAM) =================
 
-async def delete_command(message, delay=1):
-    await asyncio.sleep(delay)
-    try:
-        await message.delete()
-    except:
-        pass
+async def is_admin(message: types.Message):
 
-# ================= ADMIN CHECK (ANONYMOUS SUPPORT) =================
+    chat_id = message.chat.id
 
-async def get_target(message: types.Message):
+    # Normal admin
+    if message.from_user:
+        member = await bot.get_chat_member(chat_id, message.from_user.id)
+        if member.status in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR]:
+            return True
 
-    args = message.text.split()
+    # Anonymous admin
+    if message.sender_chat:
+        if message.sender_chat.id == chat_id:
+            return True
 
-    # Reply orqali
-    if message.reply_to_message:
-
-        if message.reply_to_message.from_user:
-            user = message.reply_to_message.from_user
-            mention = f"<a href='tg://user?id={user.id}'>{user.full_name}</a>"
-            return user.id, mention
-
-        if message.reply_to_message.sender_chat:
-            chat = message.reply_to_message.sender_chat
-            return chat.id, chat.title
-
-    # Username orqali
-    if len(args) >= 2:
-        try:
-            chat = await bot.get_chat(args[1])
-            mention = f"<a href='tg://user?id={chat.id}'>{chat.full_name}</a>"
-            return chat.id, mention
-        except:
-            return None, None
-
-    return None, None
+    return False
 
 # ================= PEER INIT =================
 
@@ -72,13 +53,22 @@ async def ensure_peer(chat_id, user_id):
     except:
         pass
 
+# ================= AUTO DELETE =================
+
+async def delete_command(message, delay=1):
+    await asyncio.sleep(delay)
+    try:
+        await message.delete()
+    except:
+        pass
+
 # ================= START =================
 
 @dp.message(CommandStart())
 async def start_cmd(message: types.Message):
     await message.reply("Hybrid Guard ishga tushdi ✅")
 
-# ================= TARGET UNIVERSAL =================
+# ================= TARGET ANIQLASH =================
 
 async def get_target(message: types.Message):
 
@@ -86,12 +76,14 @@ async def get_target(message: types.Message):
 
     # Reply orqali
     if message.reply_to_message:
+
         if message.reply_to_message.from_user:
             return message.reply_to_message.from_user.id, message.reply_to_message.from_user.mention_html()
-        elif message.reply_to_message.sender_chat:
+
+        if message.reply_to_message.sender_chat:
             return message.reply_to_message.sender_chat.id, message.reply_to_message.sender_chat.title
 
-    # Username orqali
+    # @username orqali
     if len(args) >= 2:
         try:
             user = await bot.get_chat(args[1])
@@ -111,6 +103,7 @@ async def mute_user(message: types.Message):
         return
 
     args = message.text.split()
+
     if len(args) < 2:
         return
 
@@ -120,20 +113,22 @@ async def mute_user(message: types.Message):
     multiplier = {"m": 60, "h": 3600, "d": 86400}
 
     try:
-        seconds = int(time_str[:-1]) * multiplier.get(time_str[-1], 0)
+        unit = time_str[-1]
+        value = int(time_str[:-1])
+        seconds = value * multiplier.get(unit, 0)
     except:
         return
 
     target, mention = await get_target(message)
+
     if not target:
         return
 
-    until_date = int(time.time()) + seconds
     chat_id = message.chat.id
+    until_date = int(time.time()) + seconds
 
     try:
-        await app.get_chat(chat_id)
-        await app.get_chat_member(chat_id, target)
+        await ensure_peer(chat_id, target)
 
         await app.invoke(
             EditBanned(
@@ -148,10 +143,7 @@ async def mute_user(message: types.Message):
                     send_games=True,
                     send_inline=True,
                     send_polls=True,
-                    embed_links=True,
-                    change_info=True,
-                    invite_users=True,
-                    pin_messages=True
+                    embed_links=True
                 )
             )
         )
@@ -165,6 +157,7 @@ async def mute_user(message: types.Message):
         print("Mute error:", e)
 
     asyncio.create_task(delete_command(message))
+
 # ================= UNMUTE =================
 
 @dp.message(lambda m: m.text and m.text.startswith(".unmute"))
@@ -174,14 +167,14 @@ async def unmute_user(message: types.Message):
         return
 
     target, mention = await get_target(message)
+
     if not target:
         return
 
     chat_id = message.chat.id
 
     try:
-        await app.get_chat(chat_id)
-        await app.get_chat_member(chat_id, target)
+        await ensure_peer(chat_id, target)
 
         await app.invoke(
             EditBanned(
@@ -203,13 +196,14 @@ async def unmute_user(message: types.Message):
 
 # ================= BAN =================
 
-@dp.message(lambda m: m.text.startswith(".ban"))
+@dp.message(lambda m: m.text and m.text.startswith(".ban"))
 async def ban_user(message: types.Message):
 
     if not await is_admin(message):
         return
 
     target, mention = await get_target(message)
+
     if not target:
         return
 
@@ -226,7 +220,7 @@ async def ban_user(message: types.Message):
             )
         )
 
-        await message.reply(f"🚫 {mention} BAN berildi", parse_mode="HTML")
+        await message.reply(f"🚫 {mention} BAN qilindi", parse_mode="HTML")
 
     except Exception as e:
         print("Ban error:", e)
@@ -235,13 +229,14 @@ async def ban_user(message: types.Message):
 
 # ================= UNBAN =================
 
-@dp.message(lambda m: m.text.startswith(".unban"))
+@dp.message(lambda m: m.text and m.text.startswith(".unban"))
 async def unban_user(message: types.Message):
 
     if not await is_admin(message):
         return
 
     target, mention = await get_target(message)
+
     if not target:
         return
 
@@ -275,4 +270,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
