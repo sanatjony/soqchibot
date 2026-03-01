@@ -122,7 +122,7 @@ async def mute_user(message: types.Message):
 
 # ================= UNMUTE =================
 
-@dp.message(lambda m: m.text == ".unmute")
+@dp.message(lambda m: m.text and m.text.startswith(".unmute"))
 async def unmute_user(message: types.Message):
 
     if not message.reply_to_message:
@@ -131,24 +131,37 @@ async def unmute_user(message: types.Message):
     if not await is_admin(message.chat.id, message.from_user.id):
         return
 
-    user_id = message.reply_to_message.from_user.id
     chat_id = message.chat.id
+    user_id = message.reply_to_message.from_user.id
+
+    await ensure_peer(chat_id, user_id)
 
     try:
         await app.invoke(
             EditBanned(
                 channel=await app.resolve_peer(chat_id),
                 participant=await app.resolve_peer(user_id),
-                banned_rights=ChatBannedRights()
+                banned_rights=ChatBannedRights(
+                    send_messages=False,
+                    send_media=False,
+                    send_stickers=False,
+                    send_gifs=False,
+                    send_games=False,
+                    send_inline=False,
+                    send_polls=False,
+                    embed_links=False
+                )
             )
         )
 
-        await message.reply("🔊 UNMUTE qilindi")
+        name = message.reply_to_message.from_user.full_name
+
+        await message.reply(f"🔊 {name} UNMUTE qilindi")
 
     except Exception as e:
         print("Unmute error:", e)
 
-    asyncio.create_task(delete_command(message))
+    asyncio.create_task(delete_cmd(message))
 
 # ================= BAN =================
 
@@ -228,6 +241,7 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
 
 
