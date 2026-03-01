@@ -1,15 +1,12 @@
-import re
 import asyncio
 import os
 import time
 
 from aiogram import Bot, Dispatcher, types
-from aiogram.types import ChatPermissions
 from aiogram.enums import ChatMemberStatus
 from aiogram.filters import CommandStart
 
 from pyrogram import Client
-from pyrogram.errors import UserAdminInvalid
 from pyrogram.raw.functions.channels import EditBanned
 from pyrogram.raw.types import ChatBannedRights
 
@@ -26,24 +23,13 @@ bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
 # ================= PYROGRAM =================
-api_id = int(os.getenv("API_ID"))
-api_hash = os.getenv("API_HASH")
-session_string = os.getenv("SESSION")
 
-app = Client(
-    "hybrid",
-    api_id=api_id,
-    api_hash=api_hash,
-    session_string=session_string
-)
 app = Client(
     "hybrid",
     api_id=API_ID,
     api_hash=API_HASH,
     session_string=SESSION
 )
-
-user_strikes = {}
 
 # ================= START =================
 
@@ -55,15 +41,6 @@ async def start_cmd(message: types.Message):
         "Guruhga ssilka tashlash taqiqlangan 🚫"
     )
 
-# ================= AUTO DELETE =================
-
-async def auto_delete(message, delay=600):
-    await asyncio.sleep(delay)
-    try:
-        await message.delete()
-    except:
-        pass
-
 # ================= ADMIN CHECK =================
 
 async def is_admin(chat_id, user_id):
@@ -73,26 +50,7 @@ async def is_admin(chat_id, user_id):
         ChatMemberStatus.CREATOR
     ]
 
-# ================= NEW MEMBER =================
-
-@dp.message(lambda m: m.new_chat_members)
-async def new_member(message: types.Message):
-
-    try:
-        await message.delete()
-    except:
-        pass
-
-    for user in message.new_chat_members:
-
-        msg = await message.answer(
-            f"👋 {user.mention_html()} guruhga xush kelibsiz!",
-            parse_mode="HTML"
-        )
-
-        asyncio.create_task(auto_delete(msg))
-
-# ================= MUTE (HYBRID) =================
+# ================= HARD MUTE =================
 
 @dp.message(lambda m: m.text and m.text.startswith(".mute"))
 async def mute_user(message: types.Message):
@@ -114,33 +72,36 @@ async def mute_user(message: types.Message):
     value = int(time_str[:-1])
     seconds = value * multiplier.get(unit, 0)
 
-    until_date = datetime.now() + timedelta(seconds=seconds)
+    until_date = int(time.time()) + seconds
     user_id = message.reply_to_message.from_user.id
     chat_id = message.chat.id
 
     try:
-        await app.restrict_chat_member(
-            chat_id,
-            user_id,
-            permissions={
-                "can_send_messages": False,
-                "can_send_media_messages": False,
-                "can_send_other_messages": False,
-                "can_add_web_page_previews": False
-            },
-            until_date=until_date
+        await app.invoke(
+            EditBanned(
+                channel=await app.resolve_peer(chat_id),
+                participant=await app.resolve_peer(user_id),
+                banned_rights=ChatBannedRights(
+                    until_date=until_date,
+                    send_messages=True,
+                    send_media=True,
+                    send_stickers=True,
+                    send_gifs=True,
+                    send_games=True,
+                    send_inline=True,
+                    send_polls=True,
+                    embed_links=True
+                )
+            )
         )
+
+        await message.reply(f"🔇 {message.reply_to_message.from_user.mention} {time_str} ga mute qilindi")
+
     except Exception as e:
-        print("Pyrogram mute error:", e)
-        return
+        print("Mute error:", e)
 
-    # 👇 MUTE KO‘RINISHI UCHUN
-    await message.reply(
-        f"🔇 {message.reply_to_message.from_user.mention} {time_str} ga mute qilindi"
-    )
-
-    asyncio.create_task(auto_delete(message))
 # ================= UNMUTE =================
+
 @dp.message(lambda m: m.text == ".unmute")
 async def unmute_user(message: types.Message):
 
@@ -154,23 +115,20 @@ async def unmute_user(message: types.Message):
     chat_id = message.chat.id
 
     try:
-        await app.restrict_chat_member(
-            chat_id,
-            user_id,
-            permissions={
-                "can_send_messages": True,
-                "can_send_media_messages": True,
-                "can_send_other_messages": True,
-                "can_add_web_page_previews": True
-            }
+        await app.invoke(
+            EditBanned(
+                channel=await app.resolve_peer(chat_id),
+                participant=await app.resolve_peer(user_id),
+                banned_rights=ChatBannedRights()
+            )
         )
-    except Exception as e:
-        print("Pyrogram unmute error:", e)
-        return
 
-    await message.reply("🔊 UNMUTE qilindi")
-    asyncio.create_task(auto_delete(message))
-# ================= BAN (HYBRID) =================
+        await message.reply("🔊 UNMUTE qilindi")
+
+    except Exception as e:
+        print("Unmute error:", e)
+
+# ================= BAN =================
 
 @dp.message(lambda m: m.text == ".ban")
 async def ban_user(message: types.Message):
@@ -189,16 +147,14 @@ async def ban_user(message: types.Message):
             EditBanned(
                 channel=await app.resolve_peer(chat_id),
                 participant=await app.resolve_peer(user_id),
-                banned_rights=ChatBannedRights(
-                    view_messages=True
-                )
+                banned_rights=ChatBannedRights(view_messages=True)
             )
         )
+
+        await message.reply("🚫 BAN berildi")
+
     except Exception as e:
         print("Ban error:", e)
-        return
-
-    asyncio.create_task(auto_delete(message))
 
 # ================= START SYSTEM =================
 
@@ -210,6 +166,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
-
-
