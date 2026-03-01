@@ -10,6 +10,8 @@ from pyrogram import Client
 from pyrogram.raw.functions.channels import EditBanned
 from pyrogram.raw.types import ChatBannedRights
 
+# ================= TOKENS =================
+
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 API_ID = int(os.getenv("API_ID"))
 API_HASH = os.getenv("API_HASH")
@@ -25,24 +27,26 @@ app = Client(
     session_string=SESSION
 )
 
-# ================= ADMIN CHECK (ANONIM HAM) =================
+# ================= AUTO DELETE =================
 
-async def is_admin(message: types.Message):
+async def delete_command(message, delay=120):
+    await asyncio.sleep(delay)
+    try:
+        await message.delete()
+    except:
+        pass
 
-    chat_id = message.chat.id
+# ================= ADMIN CHECK =================
 
-    # Normal admin
-    if message.from_user:
-        member = await bot.get_chat_member(chat_id, message.from_user.id)
-        if member.status in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR]:
-            return True
-
-    # Anonymous admin
+async def is_admin(message):
     if message.sender_chat:
-        if message.sender_chat.id == chat_id:
-            return True
+        return True  # anonim admin
 
-    return False
+    member = await bot.get_chat_member(message.chat.id, message.from_user.id)
+    return member.status in [
+        ChatMemberStatus.ADMINISTRATOR,
+        ChatMemberStatus.CREATOR
+    ]
 
 # ================= PEER INIT =================
 
@@ -53,28 +57,15 @@ async def ensure_peer(chat_id, user_id):
     except:
         pass
 
-# ================= AUTO DELETE =================
-
-async def delete_command(message, delay=1):
-    await asyncio.sleep(delay)
-    try:
-        await message.delete()
-    except:
-        pass
-
 # ================= START =================
 
 @dp.message(CommandStart())
 async def start_cmd(message: types.Message):
     await message.reply("Hybrid Guard ishga tushdi ✅")
 
-# ================= TARGET ANIQLASH =================
+# ================= TARGET FINDER =================
 
-async def get_target(message: types.Message):
-
-    args = message.text.split()
-
-    # Reply orqali
+async def get_target(message):
     if message.reply_to_message:
 
         if message.reply_to_message.from_user:
@@ -83,14 +74,14 @@ async def get_target(message: types.Message):
         if message.reply_to_message.sender_chat:
             return message.reply_to_message.sender_chat.id, message.reply_to_message.sender_chat.title
 
-    # @username orqali
+    args = message.text.split()
+
     if len(args) >= 2:
         try:
             user = await bot.get_chat(args[1])
-            mention = f"<a href='tg://user?id={user.id}'>{user.full_name}</a>"
-            return user.id, mention
+            return user.id, f"<a href='tg://user?id={user.id}'>{user.full_name}</a>"
         except:
-            return None, None
+            pass
 
     return None, None
 
@@ -107,10 +98,15 @@ async def mute_user(message: types.Message):
     if len(args) < 2:
         return
 
+    target, mention = await get_target(message)
+
+    if not target:
+        return
+
     time_str = args[1]
     reason = " ".join(args[2:]) if len(args) > 2 else "sababsiz"
 
-    multiplier = {"m": 60, "h": 3600, "d": 86400}
+    multiplier = {"m":60,"h":3600,"d":86400}
 
     try:
         unit = time_str[-1]
@@ -119,13 +115,8 @@ async def mute_user(message: types.Message):
     except:
         return
 
-    target, mention = await get_target(message)
-
-    if not target:
-        return
-
-    chat_id = message.chat.id
     until_date = int(time.time()) + seconds
+    chat_id = message.chat.id
 
     try:
         await ensure_peer(chat_id, target)
@@ -148,10 +139,11 @@ async def mute_user(message: types.Message):
             )
         )
 
-        await message.reply(
+        msg = await message.reply(
             f"🔇 {mention} {time_str} ga mute qilindi\n📌 Sabab: {reason}",
             parse_mode="HTML"
         )
+        asyncio.create_task(delete_command(msg))
 
     except Exception as e:
         print("Mute error:", e)
@@ -167,7 +159,6 @@ async def unmute_user(message: types.Message):
         return
 
     target, mention = await get_target(message)
-
     if not target:
         return
 
@@ -184,10 +175,8 @@ async def unmute_user(message: types.Message):
             )
         )
 
-        await message.reply(
-            f"🔊 {mention} UNMUTE qilindi",
-            parse_mode="HTML"
-        )
+        msg = await message.reply(f"🔊 {mention} UNMUTE qilindi", parse_mode="HTML")
+        asyncio.create_task(delete_command(msg))
 
     except Exception as e:
         print("Unmute error:", e)
@@ -196,14 +185,13 @@ async def unmute_user(message: types.Message):
 
 # ================= BAN =================
 
-@dp.message(lambda m: m.text and m.text.startswith(".ban"))
+@dp.message(lambda m: m.text.startswith(".ban"))
 async def ban_user(message: types.Message):
 
     if not await is_admin(message):
         return
 
     target, mention = await get_target(message)
-
     if not target:
         return
 
@@ -220,7 +208,8 @@ async def ban_user(message: types.Message):
             )
         )
 
-        await message.reply(f"🚫 {mention} BAN qilindi", parse_mode="HTML")
+        msg = await message.reply(f"🚫 {mention} BAN qilindi", parse_mode="HTML")
+        asyncio.create_task(delete_command(msg))
 
     except Exception as e:
         print("Ban error:", e)
@@ -229,14 +218,13 @@ async def ban_user(message: types.Message):
 
 # ================= UNBAN =================
 
-@dp.message(lambda m: m.text and m.text.startswith(".unban"))
+@dp.message(lambda m: m.text.startswith(".unban"))
 async def unban_user(message: types.Message):
 
     if not await is_admin(message):
         return
 
     target, mention = await get_target(message)
-
     if not target:
         return
 
@@ -253,7 +241,8 @@ async def unban_user(message: types.Message):
             )
         )
 
-        await message.reply(f"♻️ {mention} UNBAN qilindi", parse_mode="HTML")
+        msg = await message.reply(f"♻️ {mention} UNBAN qilindi", parse_mode="HTML")
+        asyncio.create_task(delete_command(msg))
 
     except Exception as e:
         print("Unban error:", e)
