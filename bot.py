@@ -36,22 +36,32 @@ async def delete_command(message, delay=1):
 
 # ================= ADMIN CHECK (ANONYMOUS SUPPORT) =================
 
-async def is_admin(message: types.Message):
+async def get_target(message: types.Message):
 
-    chat_id = message.chat.id
+    args = message.text.split()
 
-    # Oddiy admin
-    if message.from_user:
-        member = await bot.get_chat_member(chat_id, message.from_user.id)
-        if member.status in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR]:
-            return True
+    # Reply orqali
+    if message.reply_to_message:
 
-    # Anonymous admin
-    if message.sender_chat:
-        if message.sender_chat.id == chat_id:
-            return True
+        if message.reply_to_message.from_user:
+            user = message.reply_to_message.from_user
+            mention = f"<a href='tg://user?id={user.id}'>{user.full_name}</a>"
+            return user.id, mention
 
-    return False
+        if message.reply_to_message.sender_chat:
+            chat = message.reply_to_message.sender_chat
+            return chat.id, chat.title
+
+    # Username orqali
+    if len(args) >= 2:
+        try:
+            chat = await bot.get_chat(args[1])
+            mention = f"<a href='tg://user?id={chat.id}'>{chat.full_name}</a>"
+            return chat.id, mention
+        except:
+            return None, None
+
+    return None, None
 
 # ================= PEER INIT =================
 
@@ -101,7 +111,6 @@ async def mute_user(message: types.Message):
         return
 
     args = message.text.split()
-
     if len(args) < 2:
         return
 
@@ -111,9 +120,7 @@ async def mute_user(message: types.Message):
     multiplier = {"m": 60, "h": 3600, "d": 86400}
 
     try:
-        unit = time_str[-1]
-        value = int(time_str[:-1])
-        seconds = value * multiplier.get(unit, 0)
+        seconds = int(time_str[:-1]) * multiplier.get(time_str[-1], 0)
     except:
         return
 
@@ -125,7 +132,8 @@ async def mute_user(message: types.Message):
     chat_id = message.chat.id
 
     try:
-        await ensure_peer(chat_id, target)
+        await app.get_chat(chat_id)
+        await app.get_chat_member(chat_id, target)
 
         await app.invoke(
             EditBanned(
@@ -143,8 +151,7 @@ async def mute_user(message: types.Message):
                     embed_links=True,
                     change_info=True,
                     invite_users=True,
-                    pin_messages=True,
-                    view_messages=False
+                    pin_messages=True
                 )
             )
         )
@@ -158,7 +165,6 @@ async def mute_user(message: types.Message):
         print("Mute error:", e)
 
     asyncio.create_task(delete_command(message))
-
 # ================= UNMUTE =================
 
 @dp.message(lambda m: m.text and m.text.startswith(".unmute"))
@@ -174,7 +180,8 @@ async def unmute_user(message: types.Message):
     chat_id = message.chat.id
 
     try:
-        await ensure_peer(chat_id, target)
+        await app.get_chat(chat_id)
+        await app.get_chat_member(chat_id, target)
 
         await app.invoke(
             EditBanned(
@@ -268,3 +275,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
