@@ -46,6 +46,14 @@ async def is_admin(chat_id, user_id):
         ChatMemberStatus.ADMINISTRATOR,
         ChatMemberStatus.CREATOR
     ]
+# ================= PEER INIT =================
+
+async def ensure_peer(chat_id, user_id):
+    try:
+        await app.get_chat(chat_id)
+        await app.get_chat_member(chat_id, user_id)
+    except:
+        pass
 
 # ================= START =================
 
@@ -129,53 +137,53 @@ async def unmute_user(message: types.Message):
         return
 
     chat_id = message.chat.id
-    user_id = None
+    args = message.text.split()
 
-    # 1️⃣ Reply orqali
-    if message.reply_to_message and message.reply_to_message.from_user:
-        user_id = message.reply_to_message.from_user.id
+    target = None
+    mention = "User"
 
-    # 2️⃣ Username orqali
-    elif len(message.text.split()) > 1:
-        username = message.text.split()[1].replace("@", "")
+    # Reply orqali
+    if message.reply_to_message:
+        if message.reply_to_message.from_user:
+            target = message.reply_to_message.from_user.id
+            mention = message.reply_to_message.from_user.mention_html()
+        elif message.reply_to_message.sender_chat:
+            target = message.reply_to_message.sender_chat.id
+            mention = message.reply_to_message.sender_chat.title
+
+    # @username orqali
+    elif len(args) >= 2:
+        username = args[1]
         try:
-            user = await app.get_users(username)
-            user_id = user.id
+            user = await bot.get_chat(username)
+            target = user.id
+            mention = f"<a href='tg://user?id={target}'>{user.full_name}</a>"
         except:
-            await message.reply("❌ User topilmadi")
             return
 
-    if not user_id:
-        await message.reply("❌ Reply yoki @username bilan yozing")
+    if not target:
         return
 
-    await ensure_peer(chat_id, user_id)
-
     try:
+        await ensure_peer(chat_id, target)
+
         await app.invoke(
             EditBanned(
                 channel=await app.resolve_peer(chat_id),
-                participant=await app.resolve_peer(user_id),
-                banned_rights=ChatBannedRights(
-                    send_messages=False,
-                    send_media=False,
-                    send_stickers=False,
-                    send_gifs=False,
-                    send_games=False,
-                    send_inline=False,
-                    send_polls=False,
-                    embed_links=False
-                )
+                participant=await app.resolve_peer(target),
+                banned_rights=ChatBannedRights()
             )
         )
 
-        await message.reply("🔊 UNMUTE qilindi")
+        await message.reply(
+            f"🔊 {mention} UNMUTE qilindi",
+            parse_mode="HTML"
+        )
 
     except Exception as e:
         print("Unmute error:", e)
-        await message.reply("❌ UNMUTE xato berdi")
 
-    asyncio.create_task(delete_cmd(message))
+    asyncio.create_task(delete_command(message))
 
 # ================= BAN =================
 
@@ -255,6 +263,7 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
 
 
