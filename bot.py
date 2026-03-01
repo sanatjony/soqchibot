@@ -125,14 +125,29 @@ async def mute_user(message: types.Message):
 @dp.message(lambda m: m.text and m.text.startswith(".unmute"))
 async def unmute_user(message: types.Message):
 
-    if not message.reply_to_message:
-        return
-
     if not await is_admin(message.chat.id, message.from_user.id):
         return
 
     chat_id = message.chat.id
-    user_id = message.reply_to_message.from_user.id
+    user_id = None
+
+    # 1️⃣ Reply orqali
+    if message.reply_to_message and message.reply_to_message.from_user:
+        user_id = message.reply_to_message.from_user.id
+
+    # 2️⃣ Username orqali
+    elif len(message.text.split()) > 1:
+        username = message.text.split()[1].replace("@", "")
+        try:
+            user = await app.get_users(username)
+            user_id = user.id
+        except:
+            await message.reply("❌ User topilmadi")
+            return
+
+    if not user_id:
+        await message.reply("❌ Reply yoki @username bilan yozing")
+        return
 
     await ensure_peer(chat_id, user_id)
 
@@ -154,12 +169,11 @@ async def unmute_user(message: types.Message):
             )
         )
 
-        name = message.reply_to_message.from_user.full_name
-
-        await message.reply(f"🔊 {name} UNMUTE qilindi")
+        await message.reply("🔊 UNMUTE qilindi")
 
     except Exception as e:
         print("Unmute error:", e)
+        await message.reply("❌ UNMUTE xato berdi")
 
     asyncio.create_task(delete_cmd(message))
 
@@ -241,6 +255,7 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
 
 
