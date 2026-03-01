@@ -10,8 +10,6 @@ from pyrogram import Client
 from pyrogram.raw.functions.channels import EditBanned
 from pyrogram.raw.types import ChatBannedRights
 
-from datetime import datetime, timedelta
-
 # ================= TOKENS =================
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -31,15 +29,14 @@ app = Client(
     session_string=SESSION
 )
 
-# ================= START =================
+# ================= AUTO DELETE =================
 
-@dp.message(CommandStart())
-async def start_cmd(message: types.Message):
-    await message.reply(
-        "Salom 👋\n\n"
-        "Men guruhni himoya qiluvchi botman.\n"
-        "Guruhga ssilka tashlash taqiqlangan 🚫"
-    )
+async def delete_command(message, delay=1):
+    await asyncio.sleep(delay)
+    try:
+        await message.delete()
+    except:
+        pass
 
 # ================= ADMIN CHECK =================
 
@@ -50,18 +47,13 @@ async def is_admin(chat_id, user_id):
         ChatMemberStatus.CREATOR
     ]
 
-# ================= TIME PARSER =================
+# ================= START =================
 
-def parse_time(time_str):
-    multiplier = {"m": 60, "h": 3600, "d": 86400}
-    try:
-        unit = time_str[-1]
-        value = int(time_str[:-1])
-        return value * multiplier.get(unit, 600)
-    except:
-        return 600
+@dp.message(CommandStart())
+async def start_cmd(message: types.Message):
+    await message.reply("Hybrid Guard ishga tushdi ✅")
 
-# ================= HARD MUTE =================
+# ================= MUTE =================
 
 @dp.message(lambda m: m.text and m.text.startswith(".mute"))
 async def mute_user(message: types.Message):
@@ -74,21 +66,23 @@ async def mute_user(message: types.Message):
 
     args = message.text.split()
 
-    # default values
-    mute_time = "10m"
-    reason = "Sabab ko‘rsatilmagan"
+    if len(args) < 2:
+        return
 
-    if len(args) >= 2:
-        mute_time = args[1]
+    time_str = args[1]
+    reason = " ".join(args[2:]) if len(args) > 2 else "sababsiz"
 
-    if len(args) >= 3:
-        reason = " ".join(args[2:])
+    multiplier = {"m": 60, "h": 3600, "d": 86400}
 
-    seconds = parse_time(mute_time)
+    try:
+        unit = time_str[-1]
+        value = int(time_str[:-1])
+        seconds = value * multiplier.get(unit, 0)
+    except:
+        return
+
     until_date = int(time.time()) + seconds
-
-    user = message.reply_to_message.from_user
-    user_id = user.id
+    user_id = message.reply_to_message.from_user.id
     chat_id = message.chat.id
 
     try:
@@ -111,12 +105,14 @@ async def mute_user(message: types.Message):
         )
 
         await message.reply(
-            f"🔇 {user.first_name} {mute_time} ga mute qilindi\n"
-            f"📌 Sabab: {reason}"
+            f"🔇 {message.reply_to_message.from_user.mention_html()} {time_str} ga mute qilindi\n📌 Sabab: {reason}",
+            parse_mode="HTML"
         )
 
     except Exception as e:
         print("Mute error:", e)
+
+    asyncio.create_task(delete_command(message))
 
 # ================= UNMUTE =================
 
@@ -129,25 +125,28 @@ async def unmute_user(message: types.Message):
     if not await is_admin(message.chat.id, message.from_user.id):
         return
 
-    user = message.reply_to_message.from_user
+    user_id = message.reply_to_message.from_user.id
+    chat_id = message.chat.id
 
     try:
         await app.invoke(
             EditBanned(
-                channel=await app.resolve_peer(message.chat.id),
-                participant=await app.resolve_peer(user.id),
+                channel=await app.resolve_peer(chat_id),
+                participant=await app.resolve_peer(user_id),
                 banned_rights=ChatBannedRights()
             )
         )
 
-        await message.reply(f"🔊 {user.first_name} unmute qilindi")
+        await message.reply("🔊 UNMUTE qilindi")
 
     except Exception as e:
         print("Unmute error:", e)
 
+    asyncio.create_task(delete_command(message))
+
 # ================= BAN =================
 
-@dp.message(lambda m: m.text and m.text.startswith(".ban"))
+@dp.message(lambda m: m.text == ".ban")
 async def ban_user(message: types.Message):
 
     if not message.reply_to_message:
@@ -156,30 +155,24 @@ async def ban_user(message: types.Message):
     if not await is_admin(message.chat.id, message.from_user.id):
         return
 
-    args = message.text.split()
-    reason = "Sabab ko‘rsatilmagan"
-
-    if len(args) >= 2:
-        reason = " ".join(args[1:])
-
-    user = message.reply_to_message.from_user
+    user_id = message.reply_to_message.from_user.id
+    chat_id = message.chat.id
 
     try:
         await app.invoke(
             EditBanned(
-                channel=await app.resolve_peer(message.chat.id),
-                participant=await app.resolve_peer(user.id),
+                channel=await app.resolve_peer(chat_id),
+                participant=await app.resolve_peer(user_id),
                 banned_rights=ChatBannedRights(view_messages=True)
             )
         )
 
-        await message.reply(
-            f"🚫 {user.first_name} ban qilindi\n"
-            f"📌 Sabab: {reason}"
-        )
+        await message.reply("🚫 BAN berildi")
 
     except Exception as e:
         print("Ban error:", e)
+
+    asyncio.create_task(delete_command(message))
 
 # ================= UNBAN =================
 
@@ -192,16 +185,26 @@ async def unban_user(message: types.Message):
     if not await is_admin(message.chat.id, message.from_user.id):
         return
 
-    user = message.reply_to_message.from_user
+    user_id = message.reply_to_message.from_user.id
+    chat_id = message.chat.id
 
     try:
-        await app.unban_chat_member(message.chat.id, user.id)
-        await message.reply(f"✅ {user.first_name} unban qilindi")
+        await app.invoke(
+            EditBanned(
+                channel=await app.resolve_peer(chat_id),
+                participant=await app.resolve_peer(user_id),
+                banned_rights=ChatBannedRights()
+            )
+        )
+
+        await message.reply("♻️ UNBAN qilindi")
 
     except Exception as e:
         print("Unban error:", e)
 
-# ================= START SYSTEM =================
+    asyncio.create_task(delete_command(message))
+
+# ================= MAIN =================
 
 async def main():
     await bot.delete_webhook(drop_pending_updates=True)
