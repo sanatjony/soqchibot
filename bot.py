@@ -185,7 +185,7 @@ async def unmute_user(message: types.Message):
 
 # ================= BAN =================
 
-@dp.message(lambda m: m.text.startswith(".ban"))
+@dp.message(lambda m: m.text and m.text.startswith(".ban"))
 async def ban_user(message: types.Message):
 
     if not await is_admin(message):
@@ -218,7 +218,7 @@ async def ban_user(message: types.Message):
 
 # ================= UNBAN =================
 
-@dp.message(lambda m: m.text.startswith(".unban"))
+@dp.message(lambda m: m.text and m.text.startswith(".unban"))
 async def unban_user(message: types.Message):
 
     if not await is_admin(message):
@@ -259,3 +259,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
