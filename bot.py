@@ -130,9 +130,8 @@ async def ban_user(message: types.Message):
 # ================= START =================
 
 async def main():
-    await bot.delete_webhook(drop_pending_updates=True)
     await app.start()
-    await dp.start_polling(bot)
+    print("Hybrid bot ishga tushdi")
 
-if __name__ == "__main__":
-    asyncio.run(main())
+    await dp.start_polling(bot, allowed_updates=[])
+
