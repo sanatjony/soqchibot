@@ -1,34 +1,60 @@
 import re
 import asyncio
 import os
+import time
+
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import ChatPermissions
 from aiogram.enums import ChatMemberStatus
+from aiogram.filters import CommandStart
+
 from pyrogram import Client
+from pyrogram.raw.functions.channels import EditBanned
+from pyrogram.raw.types import ChatBannedRights
+
 from datetime import datetime, timedelta
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+# ================= TOKENS =================
 
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 API_ID = int(os.getenv("API_ID"))
 API_HASH = os.getenv("API_HASH")
-SESSION_STRING = os.getenv("SESSION_STRING")
+SESSION = os.getenv("SESSION")
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-user_strikes = {}
+# ================= PYROGRAM =================
 
 app = Client(
     "hybrid",
     api_id=API_ID,
     api_hash=API_HASH,
-    session_string=SESSION_STRING
+    session_string=SESSION
 )
 
-LINK_PATTERN = re.compile(
-    r"(https?:\/\/|t\.me\/|telegram\.me\/|@\w+)",
-    re.IGNORECASE
-)
+user_strikes = {}
+
+# ================= START =================
+
+@dp.message(CommandStart())
+async def start_cmd(message: types.Message):
+    await message.reply(
+        "Salom 👋\n\n"
+        "Men guruhni himoya qiluvchi botman.\n"
+        "Guruhga ssilka tashlash taqiqlangan 🚫"
+    )
+
+# ================= AUTO DELETE =================
+
+async def auto_delete(message, delay=600):
+    await asyncio.sleep(delay)
+    try:
+        await message.delete()
+    except:
+        pass
+
+# ================= ADMIN CHECK =================
 
 async def is_admin(chat_id, user_id):
     member = await bot.get_chat_member(chat_id, user_id)
@@ -37,43 +63,26 @@ async def is_admin(chat_id, user_id):
         ChatMemberStatus.CREATOR
     ]
 
-def is_link(text):
-    return bool(LINK_PATTERN.search(text))
+# ================= NEW MEMBER =================
 
-# ================= ANTI LINK =================
-
-@dp.message()
-async def anti_link(message: types.Message):
-
-    if not message.text:
-        return
-
-    if await is_admin(message.chat.id, message.from_user.id):
-        return
-
-    if not is_link(message.text):
-        return
-
-    user_id = message.from_user.id
-    chat_id = message.chat.id
+@dp.message(lambda m: m.new_chat_members)
+async def new_member(message: types.Message):
 
     try:
         await message.delete()
     except:
         pass
 
-    strikes = user_strikes.get(user_id, 0) + 1
-    user_strikes[user_id] = strikes
+    for user in message.new_chat_members:
 
-    if strikes >= 3:
-        try:
-            await app.ban_chat_member(chat_id, user_id)
-        except Exception as e:
-            print("Hybrid ban error:", e)
+        msg = await message.answer(
+            f"👋 {user.mention_html()} guruhga xush kelibsiz!",
+            parse_mode="HTML"
+        )
 
-        user_strikes[user_id] = 0
+        asyncio.create_task(auto_delete(msg))
 
-# ================= MUTE =================
+# ================= MUTE (HYBRID) =================
 
 @dp.message(lambda m: m.text and m.text.startswith(".mute"))
 async def mute_user(message: types.Message):
@@ -89,27 +98,34 @@ async def mute_user(message: types.Message):
         return
 
     time_str = args[1]
+
     multiplier = {"m": 60, "h": 3600, "d": 86400}
     unit = time_str[-1]
     value = int(time_str[:-1])
     seconds = value * multiplier.get(unit, 0)
 
-    until_date = datetime.now() + timedelta(seconds=seconds)
     user_id = message.reply_to_message.from_user.id
+    chat_id = message.chat.id
+    until = int(time.time()) + seconds
 
     try:
-        await app.restrict_chat_member(
-            chat_id=message.chat.id,
-            user_id=user_id,
-            permissions=ChatPermissions(
-                can_send_messages=False
-            ),
-            until_date=until_date
+        await app.invoke(
+            EditBanned(
+                channel=await app.resolve_peer(chat_id),
+                participant=await app.resolve_peer(user_id),
+                banned_rights=ChatBannedRights(
+                    until_date=until,
+                    send_messages=True
+                )
+            )
         )
     except Exception as e:
-        print("Hybrid mute error:", e)
+        print("Mute error:", e)
+        return
 
-# ================= BAN =================
+    asyncio.create_task(auto_delete(message))
+
+# ================= BAN (HYBRID) =================
 
 @dp.message(lambda m: m.text == ".ban")
 async def ban_user(message: types.Message):
@@ -121,20 +137,31 @@ async def ban_user(message: types.Message):
         return
 
     user_id = message.reply_to_message.from_user.id
+    chat_id = message.chat.id
 
     try:
-        await app.ban_chat_member(message.chat.id, user_id)
+        await app.invoke(
+            EditBanned(
+                channel=await app.resolve_peer(chat_id),
+                participant=await app.resolve_peer(user_id),
+                banned_rights=ChatBannedRights(
+                    view_messages=True
+                )
+            )
+        )
     except Exception as e:
-        print("Hybrid ban error:", e)
+        print("Ban error:", e)
+        return
 
-# ================= START =================
+    asyncio.create_task(auto_delete(message))
+
+# ================= START SYSTEM =================
 
 async def main():
+    await bot.delete_webhook(drop_pending_updates=True)
     await app.start()
     print("Hybrid bot ishga tushdi")
+    await dp.start_polling(bot)
 
-    await dp.start_polling(bot, allowed_updates=[])
 if __name__ == "__main__":
-    import asyncio
     asyncio.run(main())
-
