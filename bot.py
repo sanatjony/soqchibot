@@ -10,8 +10,6 @@ from pyrogram import Client
 from pyrogram.raw.functions.channels import EditBanned
 from pyrogram.raw.types import ChatBannedRights
 
-# ================= TOKENS =================
-
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 API_ID = int(os.getenv("API_ID"))
 API_HASH = os.getenv("API_HASH")
@@ -19,8 +17,6 @@ SESSION = os.getenv("SESSION")
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
-
-# ================= PYROGRAM =================
 
 app = Client(
     "hybrid",
@@ -38,14 +34,25 @@ async def delete_command(message, delay=1):
     except:
         pass
 
-# ================= ADMIN CHECK =================
+# ================= ADMIN CHECK (ANONYMOUS SUPPORT) =================
 
-async def is_admin(chat_id, user_id):
-    member = await bot.get_chat_member(chat_id, user_id)
-    return member.status in [
-        ChatMemberStatus.ADMINISTRATOR,
-        ChatMemberStatus.CREATOR
-    ]
+async def is_admin(message: types.Message):
+
+    chat_id = message.chat.id
+
+    # Oddiy admin
+    if message.from_user:
+        member = await bot.get_chat_member(chat_id, message.from_user.id)
+        if member.status in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR]:
+            return True
+
+    # Anonymous admin
+    if message.sender_chat:
+        if message.sender_chat.id == chat_id:
+            return True
+
+    return False
+
 # ================= PEER INIT =================
 
 async def ensure_peer(chat_id, user_id):
@@ -61,15 +68,36 @@ async def ensure_peer(chat_id, user_id):
 async def start_cmd(message: types.Message):
     await message.reply("Hybrid Guard ishga tushdi ✅")
 
+# ================= TARGET UNIVERSAL =================
+
+async def get_target(message: types.Message):
+
+    args = message.text.split()
+
+    # Reply orqali
+    if message.reply_to_message:
+        if message.reply_to_message.from_user:
+            return message.reply_to_message.from_user.id, message.reply_to_message.from_user.mention_html()
+        elif message.reply_to_message.sender_chat:
+            return message.reply_to_message.sender_chat.id, message.reply_to_message.sender_chat.title
+
+    # Username orqali
+    if len(args) >= 2:
+        try:
+            user = await bot.get_chat(args[1])
+            mention = f"<a href='tg://user?id={user.id}'>{user.full_name}</a>"
+            return user.id, mention
+        except:
+            return None, None
+
+    return None, None
+
 # ================= MUTE =================
 
 @dp.message(lambda m: m.text and m.text.startswith(".mute"))
 async def mute_user(message: types.Message):
 
-    if not message.reply_to_message:
-        return
-
-    if not await is_admin(message.chat.id, message.from_user.id):
+    if not await is_admin(message):
         return
 
     args = message.text.split()
@@ -89,17 +117,20 @@ async def mute_user(message: types.Message):
     except:
         return
 
+    target, mention = await get_target(message)
+    if not target:
+        return
+
     until_date = int(time.time()) + seconds
-    user_id = message.reply_to_message.from_user.id
     chat_id = message.chat.id
 
     try:
-        await app.get_chat(chat_id)
-        await app.get_chat_member(chat_id, user_id)
+        await ensure_peer(chat_id, target)
+
         await app.invoke(
             EditBanned(
                 channel=await app.resolve_peer(chat_id),
-                participant=await app.resolve_peer(user_id),
+                participant=await app.resolve_peer(target),
                 banned_rights=ChatBannedRights(
                     until_date=until_date,
                     send_messages=True,
@@ -119,7 +150,7 @@ async def mute_user(message: types.Message):
         )
 
         await message.reply(
-            f"🔇 {message.reply_to_message.from_user.mention_html()} {time_str} ga mute qilindi\n📌 Sabab: {reason}",
+            f"🔇 {mention} {time_str} ga mute qilindi\n📌 Sabab: {reason}",
             parse_mode="HTML"
         )
 
@@ -133,36 +164,14 @@ async def mute_user(message: types.Message):
 @dp.message(lambda m: m.text and m.text.startswith(".unmute"))
 async def unmute_user(message: types.Message):
 
-    if not await is_admin(message.chat.id, message.from_user.id):
+    if not await is_admin(message):
+        return
+
+    target, mention = await get_target(message)
+    if not target:
         return
 
     chat_id = message.chat.id
-    args = message.text.split()
-
-    target = None
-    mention = "User"
-
-    # Reply orqali
-    if message.reply_to_message:
-        if message.reply_to_message.from_user:
-            target = message.reply_to_message.from_user.id
-            mention = message.reply_to_message.from_user.mention_html()
-        elif message.reply_to_message.sender_chat:
-            target = message.reply_to_message.sender_chat.id
-            mention = message.reply_to_message.sender_chat.title
-
-    # @username orqali
-    elif len(args) >= 2:
-        username = args[1]
-        try:
-            user = await bot.get_chat(username)
-            target = user.id
-            mention = f"<a href='tg://user?id={target}'>{user.full_name}</a>"
-        except:
-            return
-
-    if not target:
-        return
 
     try:
         await ensure_peer(chat_id, target)
@@ -187,28 +196,30 @@ async def unmute_user(message: types.Message):
 
 # ================= BAN =================
 
-@dp.message(lambda m: m.text == ".ban")
+@dp.message(lambda m: m.text.startswith(".ban"))
 async def ban_user(message: types.Message):
 
-    if not message.reply_to_message:
+    if not await is_admin(message):
         return
 
-    if not await is_admin(message.chat.id, message.from_user.id):
+    target, mention = await get_target(message)
+    if not target:
         return
 
-    user_id = message.reply_to_message.from_user.id
     chat_id = message.chat.id
 
     try:
+        await ensure_peer(chat_id, target)
+
         await app.invoke(
             EditBanned(
                 channel=await app.resolve_peer(chat_id),
-                participant=await app.resolve_peer(user_id),
+                participant=await app.resolve_peer(target),
                 banned_rights=ChatBannedRights(view_messages=True)
             )
         )
 
-        await message.reply("🚫 BAN berildi")
+        await message.reply(f"🚫 {mention} BAN berildi", parse_mode="HTML")
 
     except Exception as e:
         print("Ban error:", e)
@@ -217,28 +228,30 @@ async def ban_user(message: types.Message):
 
 # ================= UNBAN =================
 
-@dp.message(lambda m: m.text == ".unban")
+@dp.message(lambda m: m.text.startswith(".unban"))
 async def unban_user(message: types.Message):
 
-    if not message.reply_to_message:
+    if not await is_admin(message):
         return
 
-    if not await is_admin(message.chat.id, message.from_user.id):
+    target, mention = await get_target(message)
+    if not target:
         return
 
-    user_id = message.reply_to_message.from_user.id
     chat_id = message.chat.id
 
     try:
+        await ensure_peer(chat_id, target)
+
         await app.invoke(
             EditBanned(
                 channel=await app.resolve_peer(chat_id),
-                participant=await app.resolve_peer(user_id),
+                participant=await app.resolve_peer(target),
                 banned_rights=ChatBannedRights()
             )
         )
 
-        await message.reply("♻️ UNBAN qilindi")
+        await message.reply(f"♻️ {mention} UNBAN qilindi", parse_mode="HTML")
 
     except Exception as e:
         print("Unban error:", e)
@@ -247,25 +260,11 @@ async def unban_user(message: types.Message):
 
 # ================= MAIN =================
 
-# ================= MAIN =================
-
 async def main():
     await bot.delete_webhook(drop_pending_updates=True)
     await app.start()
-    
-    # 🔥 Pyrogramga barcha chatlarni tanitadi
-    async for _ in app.get_dialogs():
-        pass
-
     print("Hybrid bot ishga tushdi")
     await dp.start_polling(bot)
 
-
 if __name__ == "__main__":
     asyncio.run(main())
-
-
-
-
-
-
