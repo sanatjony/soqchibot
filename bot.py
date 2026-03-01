@@ -134,12 +134,12 @@ async def mute_user(message: types.Message):
         print("Pyrogram mute error:", e)
         return
 
-# 👇 MUTE KO‘RINISHI UCHUN
-await message.reply(
-    f"🔇 {message.reply_to_message.from_user.mention} {time_str} ga mute qilindi"
+    # 👇 MUTE KO‘RINISHI UCHUN
+    await message.reply(
+        f"🔇 {message.reply_to_message.from_user.mention} {time_str} ga mute qilindi"
     )
 
-asyncio.create_task(auto_delete(message))
+    asyncio.create_task(auto_delete(message))
 # ================= UNMUTE =================
 @dp.message(lambda m: m.text == ".unmute")
 async def unmute_user(message: types.Message):
@@ -210,5 +210,6 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
 
